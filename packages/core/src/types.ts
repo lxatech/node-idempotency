@@ -39,6 +39,15 @@ export interface IdempotencyOptions {
   skipRequest?: (
     req: IdempotencyParamsWithDefaults,
   ) => boolean | Promise<boolean>;
+
+  /**
+   * @defaultValue `undefined`
+   *
+   * custom way to extract the idempotency key from the request
+   */
+  idempotencyKeyExtractor?: (
+    req: IdempotencyParamsWithDefaults,
+  ) => string | undefined | Promise<string | undefined>;
 }
 
 export interface IdempotencyParams {
@@ -50,8 +59,11 @@ export interface IdempotencyParams {
 }
 
 export interface IdempotencyParamsWithDefaults extends IdempotencyParams {
-  options: Required<Omit<IdempotencyOptions, "skipRequest">> & {
+  options: Required<
+    Omit<IdempotencyOptions, "skipRequest" | "idempotencyKeyExtractor">
+  > & {
     skipRequest?: IdempotencyOptions["skipRequest"];
+    idempotencyKeyExtractor?: IdempotencyOptions["idempotencyKeyExtractor"];
   };
 }
 
