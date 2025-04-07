@@ -1,20 +1,20 @@
 import { type StorageAdapter } from "@node-idempotency/storage";
-import {
-  HttpHeaderKeysEnum,
-  type IdempotencyParams,
-  type IdempotencyParamsWithDefaults,
-  type IdempotencyResponse,
-  type IdempotencyOptions,
-  RequestStatusEnum,
-  type StoragePayload,
-} from "./types";
+import { createHash } from "crypto";
 import {
   IDEMPOTENCY_CACHE_KEY_PREFIX,
   IDEMPOTENCY_CACHE_TTL_MS,
   IDEMPOTENCY_KEY_LEN,
 } from "./constants";
 import { IdempotencyError, IdempotencyErrorCodes } from "./error";
-import { createHash } from "crypto";
+import {
+  HttpHeaderKeysEnum,
+  type IdempotencyOptions,
+  type IdempotencyParams,
+  type IdempotencyParamsWithDefaults,
+  type IdempotencyResponse,
+  RequestStatusEnum,
+  type StoragePayload,
+} from "./types";
 export class Idempotency {
   options: IdempotencyParamsWithDefaults["options"];
   constructor(
@@ -53,6 +53,10 @@ export class Idempotency {
   private getIdempotencyKey(
     req: IdempotencyParamsWithDefaults,
   ): string | undefined {
+    if (typeof req.options.idempotencyKeyExtractor === "function") {
+      return req.options.idempotencyKeyExtractor(req) as string | undefined;
+    }
+
     const key = Object.keys(req.headers).find(
       (key) => key.toLowerCase() === req.options.idempotencyKey.toLowerCase(),
     );

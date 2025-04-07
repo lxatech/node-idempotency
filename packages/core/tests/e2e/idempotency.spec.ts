@@ -1,10 +1,10 @@
+import { MemoryStorageAdapter } from "@node-idempotency/storage-adapter-memory";
 import {
   HttpHeaderKeysEnum,
   Idempotency,
   type IdempotencyParams,
   type IdempotencyParamsWithDefaults,
 } from "../../src";
-import { MemoryStorageAdapter } from "@node-idempotency/storage-adapter-memory";
 
 describe("Idempotency (Integration Test)", () => {
   let idempotency: Idempotency;
@@ -102,6 +102,28 @@ describe("Idempotency (Integration Test)", () => {
     });
 
     expect(cachedResponse2).toBeUndefined();
+  });
+
+  it("should allow custom idempotencyKeyExtractor", async () => {
+    const req: IdempotencyParams = {
+      headers: { "random-idempotency-key": "123" },
+      path: "/pay",
+      body: { a: "a" },
+      method: "POST",
+      options: {
+        idempotencyKeyExtractor: (req) =>
+          req.headers["random-idempotency-key"] as string | undefined,
+      },
+    };
+    const res = { body: { success: "true" } };
+    const idempotencyRes = await idempotency.onRequest(req);
+    expect(idempotencyRes).toBeUndefined();
+
+    await idempotency.onResponse(req, res);
+
+    const cachedResponse = await idempotency.onRequest(req);
+
+    expect(cachedResponse).toEqual(res);
   });
 
   // @TODO add more cases
