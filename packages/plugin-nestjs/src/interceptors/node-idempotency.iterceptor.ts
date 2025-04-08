@@ -1,35 +1,41 @@
 import {
-  Injectable,
-  type NestInterceptor,
-  type ExecutionContext,
   type CallHandler,
+  type ExecutionContext,
   HttpException,
-  InternalServerErrorException,
-  Inject,
   HttpStatus,
+  Inject,
+  Injectable,
+  InternalServerErrorException,
+  LoggerService,
+  type NestInterceptor,
+  Optional,
 } from "@nestjs/common";
-import { StorageAdapter } from "@node-idempotency/storage";
 import {
   Idempotency,
   IdempotencyError,
+  IdempotencyErrorCodes,
+  IdempotencyOptions,
   type IdempotencyParams,
   type IdempotencyResponse,
-  IdempotencyOptions,
-  IdempotencyErrorCodes,
 } from "@node-idempotency/core";
 import {
-  idempotency2HttpCodeMap,
   headers2Cache,
   HTTPHeaderEnum,
+  idempotency2HttpCodeMap,
 } from "@node-idempotency/shared";
+import { StorageAdapter } from "@node-idempotency/storage";
 
+import { type Request, type Response } from "express";
 import { type FastifyReply, type FastifyRequest } from "fastify";
-import { type Response, type Request } from "express";
 
-import { type Observable, of, throwError, map, catchError } from "rxjs";
 import { Reflector } from "@nestjs/core";
-import { IDEMPOTENCY_OPTIONS, IDEMPOTENCY_STORAGE } from "../constants";
+import { catchError, map, type Observable, of, throwError } from "rxjs";
 import { Stream } from "stream";
+import {
+  IDEMPOTENCY_LOGGER,
+  IDEMPOTENCY_OPTIONS,
+  IDEMPOTENCY_STORAGE,
+} from "../constants";
 import { type SerializedAPIException } from "../types";
 
 @Injectable()
@@ -41,6 +47,9 @@ export class NodeIdempotencyInterceptor implements NestInterceptor {
     private readonly stoarge: StorageAdapter,
     @Inject(IDEMPOTENCY_OPTIONS)
     optons?: IdempotencyOptions,
+    @Inject(IDEMPOTENCY_LOGGER)
+    @Optional()
+    private readonly logger?: LoggerService,
   ) {
     this.nodeIdempotency = new Idempotency(this.stoarge, optons);
   }
@@ -73,9 +82,19 @@ export class NodeIdempotencyInterceptor implements NestInterceptor {
           idempotencyReq,
         );
       if (!idempotencyResponse) {
+        this.logger?.debug?.("Idempotent request received for the first time");
         return await this.handleNewRequest(idempotencyReq, context, next);
       }
+
       // this is a duplicate request
+      const idempotencyKey = this.extractIdempotencyKey(
+        options,
+        idempotencyReq,
+      );
+      this.logger?.log(
+        `Duplicate idempotent request received for idempotency key: ${idempotencyKey}`,
+      );
+
       if (idempotencyResponse.additional?.statusCode) {
         const { statusCode } = idempotencyResponse.additional;
         if ("code" in response && typeof response.code === "function") {
@@ -111,17 +130,44 @@ export class NodeIdempotencyInterceptor implements NestInterceptor {
         if (err.code === IdempotencyErrorCodes.REQUEST_IN_PROGRESS) {
           this.setHeaders(response, { [HTTPHeaderEnum.retryAfter]: "1" });
         }
+
+        this.logger?.error(
+          `Failed handling idempotent request (IdempotencyError): ${err.message}`,
+          err,
+        );
+
         return throwError(
           () => new HttpException(err.message, status as HttpStatus),
         );
       }
       if (err instanceof HttpException) {
+        this.logger?.error(
+          `Failed handling idempotent request (HttpException): ${err.message}`,
+          err,
+        );
         return throwError(() => err);
       }
     }
 
     // something unexpected happened, both cached response and handler did not execute as expected
     return throwError(() => new InternalServerErrorException());
+  }
+
+  private extractIdempotencyKey(options, idempotencyReq): string | undefined {
+    let idempotencyKey;
+
+    if (typeof options.idempotencyKeyExtractor === "function") {
+      idempotencyKey = options.idempotencyKeyExtractor(idempotencyReq) as
+        | string
+        | undefined;
+    } else {
+      idempotencyKey =
+        idempotencyReq.headers[
+          this.nodeIdempotency.options.idempotencyKey.toLowerCase()
+        ];
+    }
+
+    return idempotencyKey;
   }
 
   private buildError(error: SerializedAPIException): HttpException {

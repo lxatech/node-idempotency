@@ -1,10 +1,8 @@
-import { type DynamicModule, Module } from "@nestjs/common";
+import { ConsoleLogger, type DynamicModule, Module } from "@nestjs/common";
 import { ConfigModule, ConfigService } from "@nestjs/config";
-import {
-  NodeIdempotencyModule,
-  StorageAdapterEnum,
-} from "../../../../src/index";
+import { NodeIdempotencyModule, StorageAdapterEnum } from "../../../../src";
 import { TestController } from "./test.controller";
+import { IDEMPOTENCY_LOGGER } from "../../../../src/constants";
 
 @Module({})
 export class TestModuleMemory {
@@ -91,6 +89,23 @@ export class TestModuleMemoryithFactory {
           },
         }),
       ],
+    };
+  }
+}
+
+@Module({})
+export class TestModuleLogger {
+  static forRootAsync(): DynamicModule {
+    return {
+      global: true,
+      module: TestModuleLogger,
+      providers: [
+        {
+          provide: IDEMPOTENCY_LOGGER,
+          useValue: new ConsoleLogger("TestIdempotency"),
+        },
+      ],
+      exports: [IDEMPOTENCY_LOGGER],
     };
   }
 }

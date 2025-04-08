@@ -1,18 +1,19 @@
 // eslint-disable @typescript-eslint/no-unsafe-argument
 import { type INestApplication } from "@nestjs/common";
-import { Test } from "@nestjs/testing";
-import { RedisMemoryServer } from "redis-memory-server";
 import { FastifyAdapter } from "@nestjs/platform-fastify";
+import { Test } from "@nestjs/testing";
 import { HTTPHeaderEnum } from "@node-idempotency/shared";
+import { RedisMemoryServer } from "redis-memory-server";
 
+import { type Server } from "net";
 import * as request from "supertest";
 import {
+  TestModuleLogger,
   TestModuleMemory,
   TestModuleMemoryithFactory,
   TestModuleRedis,
   TestModuleRedisWithFactory,
 } from "./modules/test/test.module";
-import { type Server } from "net";
 const idempotencyKey = "Idempotency-Key";
 const IDEMPOTENCY_REPLAYED_HEADER = HTTPHeaderEnum.idempotentReplayed;
 
@@ -35,7 +36,10 @@ describe("Node-Idempotency", () => {
           const host = await redisServer.getHost();
           process.env.REDIS_URL = `redis://${host}:${port}`;
           const module = await Test.createTestingModule({
-            imports: [TestModule.forRootAsync({ port, host })],
+            imports: [
+              TestModule.forRootAsync({ port, host }),
+              TestModuleLogger.forRootAsync(),
+            ],
           }).compile();
           if (adapter === "fastify") {
             app = module.createNestApplication(new FastifyAdapter());
