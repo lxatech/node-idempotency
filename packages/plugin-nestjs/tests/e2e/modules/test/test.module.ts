@@ -44,6 +44,29 @@ export class TestModuleRedis {
 }
 
 @Module({})
+export class TestModuleFirestore {
+  static forRootAsync(): DynamicModule {
+    return {
+      global: true,
+      module: TestModuleFirestore,
+      controllers: [TestController],
+      imports: [
+        NodeIdempotencyModule.forRootAsync({
+          storage: {
+            adapter: StorageAdapterEnum.firestore,
+            options: {
+              collection: "idempotency-test",
+              projectId: "",
+            },
+          },
+          cacheTTLMS: 1000,
+        }),
+      ],
+    };
+  }
+}
+
+@Module({})
 export class TestModuleRedisWithFactory {
   static forRootAsync(): DynamicModule {
     return {
@@ -70,12 +93,13 @@ export class TestModuleRedisWithFactory {
     };
   }
 }
+
 @Module({})
-export class TestModuleMemoryithFactory {
+export class TestModuleMemoryWithFactory {
   static forRootAsync(): DynamicModule {
     return {
       global: true,
-      module: TestModuleMemoryithFactory,
+      module: TestModuleMemoryWithFactory,
       controllers: [TestController],
       imports: [
         NodeIdempotencyModule.forRootAsync({

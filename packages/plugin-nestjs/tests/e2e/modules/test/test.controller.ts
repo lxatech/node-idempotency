@@ -6,13 +6,14 @@ import {
   HttpCode,
   Post,
 } from "@nestjs/common";
-import { Idempotent } from "../../../../src/index";
+import { Idempotent } from "../../../../src";
 
 @Controller()
 @Idempotent({ keyMaxLength: 3, enforceIdempotency: true })
 export class TestController {
   counter = 0;
   slowCounter = 0;
+  slowCounterForFirestore = 0;
   adCounter = 0;
 
   @Get()
@@ -24,6 +25,12 @@ export class TestController {
   async getSlowNumber(): Promise<number> {
     await new Promise((resolve) => setTimeout(resolve, 500));
     return this.slowCounter++;
+  }
+
+  @Get("/slow-for-firestore")
+  async getSlowNumberForFirestore(): Promise<number> {
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    return this.slowCounterForFirestore++;
   }
 
   @Get("/error")

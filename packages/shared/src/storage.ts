@@ -1,5 +1,12 @@
 import { MemoryStorageAdapter } from "@node-idempotency/storage-adapter-memory";
-import { RedisStorageAdapter } from "@node-idempotency/storage-adapter-redis";
+import {
+  RedisStorageAdapter,
+  type RedisStorageAdapterOptions,
+} from "@node-idempotency/storage-adapter-redis";
+import {
+  FirestoreStorageAdapter,
+  type FirestoreStorageAdapterOptions,
+} from "@node-idempotency/storage-adapter-firestore";
 import { type StorageAdapterArg, StorageAdapterEnum } from "./types";
 import { type StorageAdapter } from "@node-idempotency/storage";
 
@@ -14,7 +21,17 @@ export const buildStorageAdapter = async (
         break;
       }
       case StorageAdapterEnum.redis: {
-        storageAdapter = new RedisStorageAdapter(storage.options);
+        storageAdapter = new RedisStorageAdapter(
+          storage.options as RedisStorageAdapterOptions,
+        );
+        if (typeof storageAdapter.connect === "function")
+          await storageAdapter.connect();
+        break;
+      }
+      case StorageAdapterEnum.firestore: {
+        storageAdapter = new FirestoreStorageAdapter(
+          storage.options as FirestoreStorageAdapterOptions,
+        );
         if (typeof storageAdapter.connect === "function")
           await storageAdapter.connect();
         break;

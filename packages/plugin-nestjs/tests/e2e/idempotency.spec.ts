@@ -8,9 +8,10 @@ import { RedisMemoryServer } from "redis-memory-server";
 import { type Server } from "net";
 import * as request from "supertest";
 import {
+  TestModuleFirestore,
   TestModuleLogger,
   TestModuleMemory,
-  TestModuleMemoryithFactory,
+  TestModuleMemoryWithFactory,
   TestModuleRedis,
   TestModuleRedisWithFactory,
 } from "./modules/test/test.module";
@@ -21,9 +22,10 @@ describe("Node-Idempotency", () => {
   ["fastify", "express"].forEach((adapter) => {
     [
       TestModuleMemory,
+      TestModuleFirestore,
       TestModuleRedis,
       TestModuleRedisWithFactory,
-      TestModuleMemoryithFactory,
+      TestModuleMemoryWithFactory,
     ].forEach((TestModule) => {
       describe(`when ${adapter}:${TestModule.name}`, () => {
         let server: Server;
@@ -148,18 +150,27 @@ describe("Node-Idempotency", () => {
         });
 
         it("should return a conflict when parallel requests are made", async () => {
-          const [res1, res2] = await Promise.all([
-            request(server)
-              .get("/slow")
-              .set({ [idempotencyKey]: "2" })
-              .then((res) => res)
-              .catch((err) => err),
-            request(server)
-              .get("/slow")
-              .set({ [idempotencyKey]: "2" })
-              .then((res) => res)
-              .catch((err) => err),
-          ]);
+          const isFirestoreModule =
+            TestModule.name === TestModuleFirestore.name;
+          const url = isFirestoreModule ? "/slow-for-firestore" : "/slow";
+
+          const req1 = request(server)
+            .get(url)
+            .set({ [idempotencyKey]: "2" })
+            .then((res) => res)
+            .catch((err) => err);
+
+          await new Promise((resolve) =>
+            setTimeout(resolve, isFirestoreModule ? 500 : 0),
+          );
+
+          const req2 = request(server)
+            .get(url)
+            .set({ [idempotencyKey]: "2" })
+            .then((res) => res)
+            .catch((err) => err);
+
+          const [res1, res2] = await Promise.all([req1, req2]);
 
           const success = res1.status === 200 ? res1.status : res2.status;
           const conflict = res1.status !== 200 ? res1.status : res2.status;

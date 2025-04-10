@@ -18,7 +18,8 @@
     "@node-idempotency/core": "workspace:*",
     "@node-idempotency/storage": "workspace:*",
     "@node-idempotency/storage-adapter-memory": "workspace:*",
-    "@node-idempotency/storage-adapter-redis": "workspace:*"
+    "@node-idempotency/storage-adapter-redis": "workspace:*",
+    "@node-idempotency/storage-adapter-firestore": "workspace:*"
   },
   "publishConfig": {
     "access": "public"

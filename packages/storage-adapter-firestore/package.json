@@ -1,0 +1,35 @@
+{
+  "name": "@node-idempotency/storage-adapter-firestore",
+  "version": "0.1.0-lxa-alpha.1",
+  "description": "Firestore storage adapter for node-idempotency",
+  "main": "dist/index.js",
+  "typings": "dist/index.d.ts",
+  "files": [
+    "dist/"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mahendraHegde/node-idempotency.git"
+  },
+  "scripts": {
+    "prepublishOnly": "pnpm build",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsc",
+    "typecheck": "tsc -b"
+  },
+  "keywords": [
+    "idempotency",
+    "firestore",
+    "storage",
+    "adapter"
+  ],
+  "author": "Mahendra Hegde",
+  "license": "MIT",
+  "dependencies": {
+    "@google-cloud/firestore": "^7.11.0",
+    "@node-idempotency/storage": "workspace:*"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
