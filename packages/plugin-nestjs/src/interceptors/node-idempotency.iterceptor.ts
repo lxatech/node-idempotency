@@ -68,6 +68,7 @@ export class NodeIdempotencyInterceptor implements NestInterceptor {
     const options =
       this.reflector.get(IDEMPOTENCY_OPTIONS, context.getHandler()) ??
       this.reflector.get(IDEMPOTENCY_OPTIONS, context.getClass());
+
     const idempotencyReq: IdempotencyParams = {
       headers: request.headers,
       body: request.body,
@@ -76,21 +77,21 @@ export class NodeIdempotencyInterceptor implements NestInterceptor {
       options,
     };
 
+    const idempotencyKey = this.extractIdempotencyKey(options, idempotencyReq);
+
     try {
       const idempotencyResponse: IdempotencyResponse | undefined =
         await this.nodeIdempotency.onRequest<unknown, SerializedAPIException>(
           idempotencyReq,
         );
       if (!idempotencyResponse) {
-        this.logger?.debug?.("Idempotent request received for the first time");
+        this.logger?.debug?.(
+          `Idempotent request received for the first time: ${idempotencyKey}`,
+        );
         return await this.handleNewRequest(idempotencyReq, context, next);
       }
 
       // this is a duplicate request
-      const idempotencyKey = this.extractIdempotencyKey(
-        options,
-        idempotencyReq,
-      );
       this.logger?.log(
         `Duplicate idempotent request received for idempotency key: ${idempotencyKey}`,
       );
@@ -132,7 +133,7 @@ export class NodeIdempotencyInterceptor implements NestInterceptor {
         }
 
         this.logger?.error(
-          `Failed handling idempotent request (IdempotencyError): ${err.message}`,
+          `Failed handling idempotent request with key ${idempotencyKey} (IdempotencyError): ${err.message}`,
           err,
         );
 
@@ -142,7 +143,7 @@ export class NodeIdempotencyInterceptor implements NestInterceptor {
       }
       if (err instanceof HttpException) {
         this.logger?.error(
-          `Failed handling idempotent request (HttpException): ${err.message}`,
+          `Failed handling idempotent request with key ${idempotencyKey} (HttpException): ${err.message}`,
           err,
         );
         return throwError(() => err);
